@@ -1,0 +1,171 @@
+from flask import Flask,render_template
+
+import sqlite3
+
+app=Flask(__name__)
+
+@app.route('/')
+
+def main():
+
+conn=sqlite3.connect('vedas.db')
+
+cursor=conn.cursor()
+cursor.execute("Select IP,count(MESSAGE) as MessageCount from threat group by IP order by MessageCount desc limit 5")
+
+ip_message_counts=cursor.fetchall()
+print(ip_message_counts)
+
+ip_data=[]
+for row in ip_message_counts:
+ip=row[0]
+message_count=row[1]
+ip_data.append({'name':ip,'y':message_count})
+
+
+
+
+
+return render_template('dashboard.html',ip_data=ip_data)
+
+@app.route('/data')
+
+def main12():
+
+conn=sqlite3.connect('vedas.db')
+
+cursor=conn.cursor()
+cursor.execute("select substr(TIMESTAMP,1,11),count(*) from threat group by substr (TIMESTAMP,1,11)")
+data=cursor.fetchall()
+print(data)
+
+cursor.close()
+conn.close()
+
+return{'data':data}
+
+
+
+
+
+#dashboard.html
+
+
+<html>
+<head>
+</head>
+
+<script src="highcharts.js"></script>
+<div id="chart-container1"></div>
+<div id="date-chart"></div>
+
+<script>
+
+var ipData1={{ip_data|tojson}};
+
+$(document).ready(function(){
+
+var chart=Highcharts.chart('chart-container1',
+
+{
+chart:{
+type:'pie'
+},
+title:{
+text:'top_ips'
+},
+credits:{
+enabled:false
+},
+plotOptions:{
+pie:{
+allowPointselect:true,
+cursor:'pointer',
+showInLegend:true,
+dataLabels:{
+enabled:true,
+format:'{point.percentage:.2f}%',
+
+style:{
+fontWeight:'bold',
+fontSize:'15px'
+}
+},
+}
+},
+series:[{
+name:'IP',
+data:ipData1,
+showInLegend:true
+}],
+
+
+});
+
+});
+
+
+$(document).ready(function(){
+
+$ajax({
+url:'/data',
+method:'GET',
+success:function(resposne){
+const data=response.data;
+const dates=[];
+const counts=[];
+for( let i=0;i<data.length;i++){
+dates.push(data[i][0]);
+counts.push(data[i][1]);
+}
+Highcharts.chart('date-chart',{
+
+chart:{
+type:'column'
+
+},
+title:{
+text:'DAily occurence'
+},
+credits:{
+enabled:false
+},
+xAxis:{
+categories:dates,
+title:{
+text:'Dates'
+}
+},
+yAxis:{
+min:0,
+title:{
+text:'Message_counts'
+}
+},
+series:[{
+name:'Occurrences',
+data:counts
+}],
+plotOptions:{
+series:{
+cursor:'pointer',
+dataLabels:{
+enabled:true,
+format:'{y}',
+inside:true,
+verticalAlign:'top',
+style:{
+fontWeight:'bold',
+fontSize:'20px',
+}
+},
+colorByPoint:true,
+}
+}
+});
+},
+error.function(){
+console.log('error occurred while fetching data');
+}
+
+});
