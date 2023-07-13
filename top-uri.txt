@@ -1,0 +1,162 @@
+from flask import Flask, render_template, jsonify
+import sqlite3
+
+app = Flask(__name__)
+
+@app.route('/')
+def main():
+
+
+
+
+
+	conn=sqlite3.connect('vedas.db')
+	cursor=conn.cursor()
+	
+	cursor.execute("Select IP,count(MESSAGE) as MessageCount from threat group by IP order by MessageCount desc limit 5")
+
+ip_message_counts=cursor.fetchall()
+print(ip_message_counts)
+
+ip_data=[]
+for row in ip_message_counts:
+ip=row[0]
+message_count=row[1]
+ip_data.append({'name':ip,'y':message_count})
+
+
+	cursor.execute('select URI from threat')
+	data1=cursor.fetchall()
+		
+	uri_counts=Counter(row[0] for row in data1)
+	top_5_uris=uri_counts.most_common(5)
+	chart_labels=[uri for uri,_in top_5_uris]
+	print(chart_labels)
+chart_data=[count for _,count in top_5_uris]
+print(chart_data)
+    return render_template('dashboard.html',ip_data=ip_data,chart_labels=chart_labels,chart_data=chart_data)
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+</head>
+<body>
+    <div id="chart-container1"></div>
+    <div id="uri-chart"></div>
+
+    <script>
+        var ipData1 = {{ ip_data|tojson }};
+var chartLabels={{chart_labels|safe}};
+var chartData={{chart_data|safe}};
+        
+        $(document).ready(function () {
+            var chart = Highcharts.chart('chart-container1', {
+                chart: {
+                    type: 'pie'
+                },
+                title: {
+                    text: 'Top IPs'
+                },
+                credits: {
+                    enabled: false
+                },
+                plotOptions: {
+                    pie: {
+                        allowPointSelect: true,
+                        cursor: 'pointer',
+                        showInLegend: true,
+                        dataLabels: {
+                            enabled: true,
+                            format: '{point.percentage:.2f}%',
+                            style: {
+                                fontWeight: 'bold',
+                                fontSize: '15px'
+                            }
+                        }
+                    }
+                },
+                series: [{
+                    name: 'IP',
+                    data: ipData1,
+                    showInLegend: true
+                }],
+                tooltip: {
+                    pointFormat: 'Click to view attacks'
+                },
+                plotOptions: {
+                    pie: {
+                        events: {
+                            click: function (event) {
+                                var ip = event.point.name;
+                                updateAttackData(ip);
+                            }
+                        }
+                    }
+                }
+            });
+
+           
+        });
+
+
+HighCharts.chart('uri-chart',{
+
+	chart:{
+type:'pie'
+},
+title:{
+text:'top Uris'
+},
+credits:{
+enabled:false
+},
+series:[{
+name:'Occurrence',
+colorByPoint:true,
+data:chartData
+}],
+plotOptions:{
+pie:{
+allowPointSelect:true,
+cursor:'pointer',
+showInLegend:true,
+dataLabels:{
+enabled:true,
+format:'{point.percentage:.2f}%',
+style:{
+fontWeight:'bold',
+fontSize:'12px',
+},
+}
+}
+},
+tooltip:{
+pointformat:'{series.name}:<b>{point.y}</b>',
+formatter:function(){
+return chartLabels[this.point.index] + ':' + this.point.y;
+}
+},
+legend:{
+enabled:true,
+align:'center',
+verticalAlign:'bottom',
+layout:'horizontal',
+itemMarginBottom:6,
+labelFormatter:function(){
+return chartLabels[this.index];
+
+}
+}
+});
+    </script>
+</body>
+</html>
