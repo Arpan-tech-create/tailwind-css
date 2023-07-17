@@ -1,0 +1,106 @@
+
+from flask import Flask, render_template
+import sqlite3
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    conn = sqlite3.connect('vedas.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT URI, COUNT(*) AS cnt FROM threat GROUP BY URI ORDER BY cnt DESC LIMIT 5")
+    data = cursor.fetchall()
+
+
+
+
+cursor.execute("select MESSAGE,count(*) as Occurrences from threat where RESPONSE=403 group by MESSAGE order by Occurrences desc")
+
+
+results=cursor.fetchall()
+attack_data=[]
+for row in results:
+message=row[0]
+Occurrences=row[1]
+attack_data.append({'name':message,'y':Occurrences})
+return render_template('dashboard.html',data=data,attack_data=attack_data)
+
+
+
+
+
+
+
+#dashboard.html
+
+
+<html>
+<script src="highchart.js"></script>
+
+<div id="piechart"></div>
+<div id="uri-chart"></div>
+
+<script>
+
+
+       var data = {{ data | tojson }};
+var data={{attack_data | safe}};
+
+            var chart = Highcharts.chart('uri-chart', {
+                chart: {
+                    type: 'pie'
+                },
+                title: {
+                    text: 'Top Threats by URI'
+                },
+                series: [{
+                    name: 'Threats',
+                    data: data
+                }]
+            });
+
+
+('DOMContentLoaded',function(){
+
+Highcharts.chart('piechart',{
+
+chart:{
+type:'pie'
+},
+title:{
+text:'top_attacks'
+},
+credits:{
+enabled:false
+},
+plotOptions:{
+pie:{
+allowPointSelect:true,
+cursor:'pointer',
+showInLegend:true,
+dataLabels:{
+enabled:true,
+format:'{point.percentage:.2f}%',
+style:{
+fontWeight:'bold',
+fontSize:'12px',
+}
+}
+}
+},
+legend:{
+enabled:true,
+align:'center',
+verticalAlign:'bottom',
+layout:'horizontal',
+itemMarginBottom:6,
+},
+seies:[{
+name:'Occurrences',
+colotByPoint:true,
+data:data
+}]
+});
+});
+)
+)
